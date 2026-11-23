@@ -1,0 +1,29 @@
+# Python 虛擬環境
+.venv/
+venv/
+transport_env/
+
+# Python 暫存檔
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# 環境變數與敏感資訊
+.env
+.env.*
+!.env.example
+
+# 訓練資料
+tools/features.csv
+
+# 感測器原始資料與個人行程
+*.zip
+SensorMotion_live_*.csv
+
+# 系統及紀錄檔
+*.log
+.DS_Store
+Thumbs.db
