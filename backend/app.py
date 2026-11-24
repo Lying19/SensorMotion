@@ -3,7 +3,9 @@ import os
 from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import RequestEntityTooLarge
 from data_loader import parse_upload
-from inference import infer
+from inference import infer, log_memory
+from threading import Lock
+UPLOAD_LOCK = Lock()
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
@@ -16,12 +18,23 @@ def index():
 
 @app.post("/api/upload")
 def upload():
+    if not UPLOAD_LOCK.acquire(blocking=False):
+        return jsonify(error="伺服器正在分析其他檔案，請稍後再試。"), 503
+    try:
+        log_memory("upload_start")
+        return _upload()
+    finally:
+        log_memory("upload_end")
+        UPLOAD_LOCK.release()
+
+def _upload():
     file = request.files.get("file")
     if not file or not file.filename:
         return jsonify(error="請先選擇檔案。"), 400
     try:
         raw = file.read()
         result = parse_upload(file.filename, raw)
+        log_memory("preview_done")
         result["ground_truth"] = request.form.get("ground_truth", "") if request.form.get("ground_truth", "") in ("mrt", "bus", "car") else None
         result["phone_position"] = request.form.get("phone_position", "")
         try:

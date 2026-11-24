@@ -98,27 +98,43 @@ def _summarize(df, sensor):
 def parse_upload(filename, content):
     ext = Path(filename).suffix.lower()
     datasets = {}
+    results, errors = {}, {}
+    quality = None
+    def summarize(sensor, df):
+        try:
+            results[sensor] = _summarize(df, sensor)
+        except (ValueError, KeyError, TypeError, OverflowError) as exc:
+            errors[sensor] = str(exc)
     if ext == ".zip":
         try:
             with zipfile.ZipFile(io.BytesIO(content)) as archive:
                 members = archive.infolist()
                 if sum(x.file_size for x in members) > MAX_ZIP_TOTAL:
                     raise ValueError("ZIP 解壓縮後資料過大（超過 240 MB）")
+                selected = {}
                 for item in members:
                     sensor = Path(item.filename).stem
                     if item.is_dir() or Path(item.filename).suffix.lower() != ".csv" or sensor not in SENSORS:
                         continue
                     if item.file_size > 50 * 1024 * 1024:
                         continue
+                    selected[sensor] = item
+                for sensor in SENSORS:
+                    if sensor not in selected: continue
+                    item = selected[sensor]
                     with archive.open(item) as f:
-                        datasets[sensor] = pd.read_csv(f, low_memory=False) if item.file_size else pd.DataFrame()
+                        summarize(sensor, pd.read_csv(f, low_memory=False) if item.file_size else pd.DataFrame())
         except (zipfile.BadZipFile, RuntimeError) as exc:
             raise ValueError("ZIP 檔案無法讀取") from exc
     elif ext == ".csv":
         sensor = Path(filename).stem
-        if sensor not in SENSORS:
-            raise ValueError("單一 CSV 檔名請使用感測器名稱，例如 Location.csv")
-        datasets[sensor] = pd.read_csv(io.BytesIO(content), low_memory=False)
+        from browser_csv import is_browser_csv, read_browser
+        if is_browser_csv(content):
+            datasets, quality = read_browser(content)
+        elif sensor in SENSORS:
+            datasets[sensor] = pd.read_csv(io.BytesIO(content), low_memory=False)
+        else:
+            raise ValueError("請上傳 SensorMotion CSV 或以感測器名稱命名的 CSV")
     elif ext == ".json":
         try:
             obj = json.loads(content)
@@ -133,7 +149,6 @@ def parse_upload(filename, content):
         datasets = {s: pd.DataFrame(rows) for s, rows in grouped.items() if rows}
     else:
         raise ValueError("只支援 ZIP、CSV、JSON")
-    results, errors = {}, {}
     for sensor in SENSORS:
         if sensor not in datasets:
             continue
@@ -143,4 +158,4 @@ def parse_upload(filename, content):
             errors[sensor] = str(exc)
     if not results:
         raise ValueError("未找到可用的 Sensor Logger 資料。" + str(errors))
-    return {"sensors": list(results), "datasets": results, "skipped": errors, "supported": SENSORS}
+    return {"sensors": list(results), "datasets": results, "skipped": errors, "supported": SENSORS, "quality": quality}
