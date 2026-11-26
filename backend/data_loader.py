@@ -95,7 +95,7 @@ def _summarize(df, sensor):
     return {**base, "kind": "numeric", "series": series, "states": states}
 
 
-def parse_upload(filename, content):
+def read_upload(filename, content):
     ext = Path(filename).suffix.lower()
     datasets = {}
     if ext == ".zip":
@@ -133,6 +133,9 @@ def parse_upload(filename, content):
         datasets = {s: pd.DataFrame(rows) for s, rows in grouped.items() if rows}
     else:
         raise ValueError("只支援 ZIP、CSV、JSON")
+    return datasets
+
+def summarize_upload(datasets):
     results, errors = {}, {}
     for sensor in SENSORS:
         if sensor not in datasets:
@@ -144,3 +147,7 @@ def parse_upload(filename, content):
     if not results:
         raise ValueError("未找到可用的 Sensor Logger 資料。" + str(errors))
     return {"sensors": list(results), "datasets": results, "skipped": errors, "supported": SENSORS}
+
+
+def parse_upload(filename, content):
+    return summarize_upload(read_upload(filename, content))

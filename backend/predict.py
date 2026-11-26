@@ -44,19 +44,27 @@ def feats(x, prefix):
              p_low=Pn[f <= 3].sum(), p_mid=Pn[(f > 3) & (f <= 10)].sum(), p_high=Pn[f > 10].sum())
     return {f"{prefix}_{k}": v for k, v in d.items()}
 
-def extract_windows(acc, gyro, mode='trip'):
+def extract_windows(acc, gyro, mode='trip', cached=None):
     if mode not in ('trip','live'): raise ValueError('mode must be trip or live')
     trim = TRIM_SEC if mode=='trip' else 0
     ma,va=mag_resampled(acc,trim); mg,vg=mag_resampled(gyro,trim)
     n=min(len(ma),len(mg)); v=va[:n]&vg[:n]
     rows=[]; ids=[]; gaps=0; nonfinite=0
     total=max(0,(n-WIN)//STEP+1)
-    for i,s in enumerate(range(0,n-WIN+1,STEP)):
+    if cached is not None:
+        rows,ids,gaps,nonfinite,old_total = cached
+        rows,ids = list(rows),list(ids)
+    else:
+        old_total = 0
+    for i in range(old_total,total):
+        s=i*STEP
         if not v[s:s+WIN].all(): gaps+=1; continue
         r=feats(ma[s:s+WIN],'acc'); r.update(feats(mg[s:s+WIN],'gyr'))
         if not np.isfinite(list(r.values())).all(): nonfinite+=1; continue
         rows.append(r); ids.append(i)
     q=dict(total_windows=total,valid_windows=len(rows),invalid_windows=total-len(rows),gap_windows=gaps,nonfinite_windows=nonfinite,valid_pct=round(100*len(rows)/total,1) if total else 0.0,acc_samples=len(ma),gyro_samples=len(mg),paired_samples=n,trim_sec=trim,latest_window_valid=bool(ids and ids[-1]==total-1),status='OK' if rows else ('insufficient_data' if not total else 'no_valid_windows'))
+    spans=[float(f["seconds_elapsed"].iloc[-1]-f["seconds_elapsed"].iloc[0]) if len(f)>1 else 0.0 for f in (acc,gyro)]
+    q.update(recording_duration_seconds=max(spans), analysis_duration_seconds=max(0.0,min(spans)-2*trim))
     return pd.DataFrame(rows,columns=COLS),ids,q
 
 def read_recording(path):
@@ -88,18 +96,29 @@ class Predictor:
             b=joblib.load(path)
             if b['preprocessing']!=cfg or b['cols']!=COLS or b['model_name']!=key or b['source_sha256']!=manifest['source_sha256']['features'] or b['scaler']!=info['scaler'] or b['classes']!=info['classes'] or list(b['model'].classes_)!=b['classes'] or set(b['classes'])!=set(LABELS) or b['model'].n_features_in_!=28: raise ValueError(f'{key}: invalid bundle')
             self.models[key]=b['model']
-    def predict(self, acc, gyro, mode='trip', model='SVM'):
+    def predict(self, acc, gyro, mode='trip', model='SVM', cache=None):
         keys=list(self.models) if model=='all' else [model]
         if not keys or any(k not in self.models for k in keys): raise ValueError('requested model not loaded')
-        W,ids,q=extract_windows(acc,gyro,mode)
+        from time import perf_counter
+        t=perf_counter()
+        W,ids,q=extract_windows(acc,gyro,mode,cache.get("features") if cache is not None else None)
+        timings={"features":round(perf_counter()-t,4)}
+        if cache is not None:
+            cache["features"]=(W.to_dict("records"),ids,q["gap_windows"],q["nonfinite_windows"],q["total_windows"])
         result=dict(mode=mode,quality=q,models={})
         for key in keys:
-            pred=self.models[key].predict(W.to_numpy()).tolist() if len(W) else []
+            t=perf_counter()
+            previous=cache.get(key,[]) if cache is not None else []
+            new=W.iloc[len(previous):]
+            pred=previous+(self.models[key].predict(new.to_numpy()).tolist() if len(new) else [])
+            if cache is not None: cache[key]=pred
+            timings[key]=round(perf_counter()-t,4)
             counts=Counter(pred); votes={c:counts[c] for c in LABELS}
             # Same pandas majority-vote rule as evaluation, including ties.
             winner=str(pd.Series(pred).value_counts().index[0]) if pred else None
             latest=pred[-1] if pred and q['latest_window_valid'] else None
             result['models'][key]=dict(prediction=winner,label=LABELS.get(winner),latest_prediction=latest,latest_label=LABELS.get(latest),vote_counts=votes,vote_ratios={c:v/len(pred) if pred else 0.0 for c,v in votes.items()},tie=bool(pred and sum(v==max(votes.values()) for v in votes.values())>1),windows=[dict(window_index=i,start_offset_sec=i*STEP/FS,prediction=p) for i,p in zip(ids,pred)])
+        result["timings_seconds"]=timings
         return result
     def predict_recording(self,path,mode='trip',model='SVM'):
         return self.predict(*read_recording(path),mode=mode,model=model)

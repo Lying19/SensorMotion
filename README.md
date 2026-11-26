@@ -74,3 +74,8 @@ python tools/retrain_models.py --features tools/features.csv
 /api/upload 保留原上傳介面；/api/live/predict 接收 JSON {mode: "live" 或 "trip", acc: [[秒,x,y,z],...], gyro: [[秒,x,y,z],...]}，單位 m/s²（線性）及 rad/s。每次傳同一趟累積資料。停止後以 trip 模式重算。無有效視窗時不分類。
 舊 model_core、tools 與其測試保留供歷史參考，不再用於網站推論。勿用舊工具覆蓋新模型。
 即時辨識需 HTTPS、前景及線性加速度支援。此版本未驗證手機實機或 Render 記憶體及長時間傳輸；不宜直接公開部署。累積快照重算會隨錄製長度增加負載。
+
+### v0.8.1
+- Upload: parse each sensor CSV once, avoid repacking ZIP; log grouping, parsing, preview, inference and serialization durations.
+- Live: bounded per-worker cache for one session, reuse completed windows only after exact input prefix verification. Full trip remains uncached.
+- UI: browser-neutral wording, full-width quality summary and scrollable timeline.

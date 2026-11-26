@@ -36,10 +36,10 @@ def group_uploads(files):
                         raise ValueError('ZIP 內有重複感測器檔案')
                     items[p.name] = z.read(i)
                 for folder, items in folders.items():
-                    groups.append((name + (' / '+folder if folder!='.' else ''), 'recording.zip', pack(items)))
+                    groups.append((name + (' / '+folder if folder!='.' else ''), 'recording.zip', items))
         elif ext == '.csv':
             if name in csvs:
-                raise ValueError('CSV 檔名重複；不同錄製請分別壓成 ZIP')
+                raise ValueError('CSV 檔名重複；不同行程請分別壓成 ZIP')
             if len(raw)>50*1024*1024:
                 raise ValueError('單一 CSV 超過 50 MB')
             csvs[name] = raw
@@ -48,7 +48,7 @@ def group_uploads(files):
         else:
             raise ValueError('不支援的檔案格式')
     if csvs:
-        groups.append(('CSV 錄製組合','recording.zip',pack(csvs)))
+        groups.append(('CSV 行程資料','recording.zip',csvs))
     if not groups:
-        raise ValueError('未找到感測器錄製')
+        raise ValueError('未找到感測器行程資料')
     return groups
