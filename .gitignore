@@ -1,3 +1,4 @@
+
 # Python 虛擬環境
 .venv/
 venv/
@@ -7,6 +8,7 @@ transport_env/
 __pycache__/
 *.pyc
 .pytest_cache/
+.ipynb_checkpoints/
 
 # VS Code
 .vscode/
@@ -16,7 +18,9 @@ __pycache__/
 .env.*
 !.env.example
 
-# 訓練資料
+# 訓練資料與研究實驗結果
+/data/
+/outputs/
 tools/features.csv
 
 # 感測器原始資料與個人行程

@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "source_sha256": {
+    "features": "80f107fd0575b399152293806c5c0e723502d683870f0b961e65f9391d36fb1c",
+    "quality": "830a9ca5bfac051ef0a0b2842dd1cfed90928d99fdc65106d367c28e6daa99cb"
+  },
+  "phase07b_manifest_sha256": "c07577a79c7f26b750f768e431fbf1baa4274ac3e481eabe42505a5b012e1496",
+  "script_sha256": "fcdb95d47e8776a43e431c7bf71e02c6e8f663bad529d88d8a7e29d19c8bc396",
+  "preprocessing_sha256": "456889b5062e0e2dc5476def7936a76af040e36bd49927be3581300704ad913d",
+  "versions": {
+    "python": "3.11.9",
+    "sklearn": "1.8.0",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scipy": "1.17.0",
+    "joblib": "1.5.3"
+  },
+  "preprocessing": {
+    "fs": 50,
+    "window_sec": 15,
+    "window_samples": 750,
+    "overlap": 0.5,
+    "step_samples": 375,
+    "trim_sec": 30,
+    "max_gap_sec": 0.5,
+    "sensors": [
+      "Accelerometer",
+      "Gyroscope"
+    ],
+    "magnitude": true,
+    "per_trip_normalization": false,
+    "alignment": "independent_resampling_truncate_to_shorter",
+    "aggregation": "majority_vote",
+    "feature_order": [
+      "acc_mean",
+      "acc_std",
+      "acc_max",
+      "acc_min",
+      "acc_rms",
+      "acc_skew",
+      "acc_kurt",
+      "acc_zcr",
+      "acc_energy",
+      "acc_domf",
+      "acc_spec_ent",
+      "acc_p_low",
+      "acc_p_mid",
+      "acc_p_high",
+      "gyr_mean",
+      "gyr_std",
+      "gyr_max",
+      "gyr_min",
+      "gyr_rms",
+      "gyr_skew",
+      "gyr_kurt",
+      "gyr_zcr",
+      "gyr_energy",
+      "gyr_domf",
+      "gyr_spec_ent",
+      "gyr_p_low",
+      "gyr_p_mid",
+      "gyr_p_high"
+    ]
+  },
+  "training_windows": 5718,
+  "training_trips": 168,
+  "excluded_trips": [
+    "1019_MRT_hand"
+  ],
+  "models": {
+    "RF": {
+      "file": "final_model.joblib",
+      "sha256": "c35df99430431532ba9e61a1d303a59306e81bd4477862b997c695af3ab13a41",
+      "classes": [
+        "MRT",
+        "bus",
+        "car"
+      ],
+      "scaler": "None",
+      "supports_predict_proba": true
+    },
+    "SVM": {
+      "file": "svm_model.joblib",
+      "sha256": "03feb3efcf4f89d7bf1b3d46caa71acc9d9661657ce0584b1e6d43fc852911c7",
+      "classes": [
+        "MRT",
+        "bus",
+        "car"
+      ],
+      "scaler": "PowerTransformer(Yeo-Johnson)",
+      "supports_predict_proba": false
+    },
+    "kNN": {
+      "file": "knn_model.joblib",
+      "sha256": "1fb826bb45b184923da68e9f42c8e214ef8a9378fa7a79208ed9db5a23cf9084",
+      "classes": [
+        "MRT",
+        "bus",
+        "car"
+      ],
+      "scaler": "PowerTransformer(Yeo-Johnson)",
+      "supports_predict_proba": true
+    }
+  }
+}
