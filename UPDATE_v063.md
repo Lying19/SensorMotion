@@ -1,3 +1,0 @@
-# SensorMotion v0.6.3
-Copy the files in this patch into the existing repository, preserving .git and models. Run `python -m unittest discover -s tests -v` and `python backend/app.py`.
-Browser CSV supports preview only; existing ZIP models unchanged. Duplicate timestamps are averaged per sensor and acceleration source for preview. Raw export retains events. Existing ZIP time alignment is intentionally unchanged to match trained models; retrain and validate shared-grid preprocessing before switching. Test iPhone Chrome/Safari on HTTPS. Render: one worker, one thread recommended; check memory logs. No deployment performed.
